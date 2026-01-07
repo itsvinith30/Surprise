@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <!-- ADDED interactive-widget=resizes-content to force resize instead of scroll -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
+    <title>Happy Birthday Bestie!</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        /* WhatsApp Dark Mode Specific Colors */
+        :root {
+            --wa-bg-color: #0b141a;      /* Main Chat Background */
+            --wa-header-bg: #202c33;     /* Header & Footer Background */
+            --wa-input-bg: #2a3942;      /* Input Field Background */
+            
+            --wa-msg-in-bg: #202c33;     /* Incoming Message Bubble */
+            --wa-msg-out-bg: #005c4b;    /* Outgoing Message Bubble */
+            
+            --wa-text-primary: #e9edef;  /* Main Text Color */
+            --wa-text-secondary: #8696a0; /* Secondary Text / Time / Icons */
+            
+            --wa-accent: #00a884;        /* Send Button / Mic */
+            --wa-blue-tick: #53bdeb;
+        }
+
+        html, body {
+            height: 100%; 
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; 
+            overscroll-behavior: none;
+        }
+
+        body {
+            background-color: #111b21; /* Dark Desktop body bg */
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            position: absolute;
+            inset: 0;
+        }
+
+        /* Chat Background Pattern */
+        .chat-bg {
+            background-color: var(--wa-bg-color);
+            /* CHANGE BACKGROUND WALLPAPER HERE */
+            background-image: url("Pics/peakpx (1).jpg");
+            background-repeat: no-repeat;
+            background-size: cover; 
+            background-position: center;
+            opacity: 1;
+            /* Dim the wallpaper for dark mode */
+            filter: brightness(0.6) grayscale(0.2); 
+            
+            /* FIX FOR WALLPAPER JUMPING */
+            height: 100vh; 
+            height: 100lvh; 
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.1); /* Dark mode thumb */
+            border-radius: 3px;
+        }
+
+        /* Animations */
+        @keyframes popIn {
+            0% { transform: scale(0); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .message-enter {
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        .typing-dot {
+            animation: typing 1.4s infinite ease-in-out both;
+            background-color: var(--wa-text-secondary); /* Dark mode dots */
+        }
+        
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
+        /* Mobile Frame */
+        .mobile-frame {
+            box-shadow: 0 0 20px rgba(0,0,0,0.5); /* Darker shadow */
+            max-width: 450px;
+            width: 100%; 
+            margin: 0 auto;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            background: var(--wa-bg-color);
+            overflow: hidden;
+        }
+
+        /* Message Bubbles */
+        .msg-bubble {
+            max-width: 75%;
+            padding: 6px 7px 8px 9px;
+            border-radius: 7.5px;
+            font-size: 15px;
+            line-height: 19px;
+            position: relative;
+            box-shadow: 0 1px 0.5px rgba(0,0,0,0.13);
+            margin-bottom: 8px;
+            word-wrap: break-word;
+        }
+        
+        .msg-bubble-image {
+            padding: 3px 3px 3px 3px; 
+            background: transparent;
+        }
+
+        .msg-in {
+            background: var(--wa-msg-in-bg);
+            color: var(--wa-text-primary);
+            align-self: flex-start;
+            border-top-left-radius: 0;
+        }
+
+        .msg-out {
+            background: var(--wa-msg-out-bg);
+            color: var(--wa-text-primary);
+            align-self: flex-end;
+            border-top-right-radius: 0;
+        }
+
+        /* Tail for bubbles */
+        .msg-in::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -8px;
+            width: 0;
+            height: 0;
+            border: 8px solid transparent;
+            border-top-color: var(--wa-msg-in-bg);
+            border-right-color: var(--wa-msg-in-bg); 
+            border-bottom: 0;
+        }
+
+        .msg-out::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            right: -8px;
+            width: 0;
+            height: 0;
+            border: 8px solid transparent;
+            border-top-color: var(--wa-msg-out-bg);
+            border-left-color: var(--wa-msg-out-bg);
+            border-bottom: 0;
+        }
+
+        /* Time stamp style */
+        .msg-time {
+            float: right;
+            font-size: 11px;
+            color: var(--wa-text-secondary);
+            margin-left: 10px;
+            margin-top: 4px;
+            display: flex;
+            align-items: center;
+            height: 15px; 
+        }
+        
+        .msg-time-image {
+            position: absolute;
+            bottom: 6px;
+            right: 10px;
+            color: white;
+            font-size: 11px;
+            background: rgba(0,0,0,0.3);
+            padding: 2px 6px;
+            border-radius: 10px;
+        }
+        
+        /* Better Double Tick Style */
+        .tick-icon {
+            width: 16px;
+            height: 16px;
+            margin-left: 2px;
+            color: var(--wa-blue-tick);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="mobile-frame">
+        
+        <!-- Background Layer -->
+        <div class="absolute top-0 left-0 w-full chat-bg z-0"></div>
+
+        <!-- Header (Dark Mode Color) -->
+        <div class="bg-[#202c33] text-[#e9edef] p-2 flex items-center shadow-sm z-20 shrink-0">
+            <div class="flex items-center cursor-pointer mr-2">
+                <i data-lucide="arrow-left" class="w-6 h-6 text-[#e9edef]"></i>
+            </div>
+            
+            <div class="relative">
+                <div class="w-10 h-10 rounded-full bg-gray-600 overflow-hidden border border-white/10 flex items-center justify-center">
+                    <!-- CHANGE THE IMAGE URL BELOW -->
+                    <img src="Pics/IMG_20260107_180122.jpg?w=150&h=150&fit=crop" class="w-full h-full object-cover" alt="Profile Pic">
+                </div>
+            </div>
+
+            <div class="flex-1 ml-3 overflow-hidden">
+                <h1 class="font-semibold text-base truncate text-[#e9edef]">Machuuuuuu ❤️</h1>
+                <p id="status-text" class="text-xs text-[#8696a0] truncate">online</p>
+            </div>
+
+            <div class="flex items-center space-x-5 mx-2 text-[#e9edef]">
+                <i data-lucide="video" class="w-5 h-5 fill-current"></i>
+                <i data-lucide="phone" class="w-5 h-5 fill-current"></i>
+                <i data-lucide="more-vertical" class="w-5 h-5"></i>
+            </div>
+        </div>
+
+        <!-- Chat Area -->
+        <div id="chat-container" class="flex-1 overflow-y-auto p-4 flex flex-col relative z-10 bg-transparent scroll-smooth">
+            
+            <!-- Date Bubble -->
+            <div class="flex justify-center mb-6 opacity-0 animate-[fadeIn_1s_ease-out_forwards]">
+                <div class="bg-[#182229] shadow-sm rounded-lg px-3 py-1 text-xs text-[#8696a0] font-medium uppercase tracking-wide opacity-90">
+                    Today
+                </div>
+            </div>
+
+            <!-- Messages List -->
+            <div id="messages-list" class="flex flex-col pb-2 w-full"></div>
+
+            <!-- Typing Indicator (Dark Mode) -->
+            <div id="typing-indicator" class="hidden self-start bg-[#202c33] rounded-full px-4 py-3 mb-4 shadow-sm items-center w-fit border-top-left-radius-0 ml-2">
+                <div class="flex space-x-1">
+                    <div class="w-2 h-2 bg-[#8696a0] rounded-full typing-dot"></div>
+                    <div class="w-2 h-2 bg-[#8696a0] rounded-full typing-dot"></div>
+                    <div class="w-2 h-2 bg-[#8696a0] rounded-full typing-dot"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer Input Area -->
+        <div class="bg-transparent px-1 py-1.5 flex items-end z-20 pb-4 md:pb-2 gap-1 w-full max-w-[100vw] overflow-hidden shrink-0">
+            <!-- Emoji Button (Fixed: Made brighter for better visibility) -->
+            <div class="p-2.5 text-[#cfd8dc] mb-0.5 cursor-pointer hover:bg-white/10 rounded-full transition-colors shrink-0">
+                <i data-lucide="smile" class="w-6 h-6"></i>
+            </div>
+            
+            <!-- Input Container (Dark Mode) -->
+            <div class="flex-1 bg-[#2a3942] rounded-3xl px-4 py-2 shadow-sm flex items-center min-h-[45px] gap-2 mb-1 min-w-0">
+                <input id="chat-input" type="text" placeholder="Message" class="flex-1 bg-transparent outline-none text-[#d1d7db] text-[16px] placeholder:text-[#8696a0] min-w-0" disabled autocomplete="off">
+                
+                <!-- Icons inside input -->
+                <div class="flex items-center gap-3 text-[#8696a0] mr-1 shrink-0">
+                    <i data-lucide="paperclip" class="w-5 h-5 rotate-45 cursor-pointer hover:text-gray-400"></i>
+                    <i data-lucide="camera" class="w-5 h-5 cursor-pointer hover:text-gray-400"></i>
+                </div>
+            </div>
+
+            <!-- Mic/Send Button -->
+            <button id="send-btn" class="p-3 bg-[#00a884] rounded-full text-white shadow-md transition-all transform active:scale-90 flex items-center justify-center w-12 h-12 mb-1 ml-1 shrink-0" onclick="handleUserSend()">
+                <i id="send-icon" data-lucide="mic" class="w-5 h-5"></i>
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        // ----------------------------------------------------
+        //  USER CONFIG: ADD PHOTOS HERE
+        // ----------------------------------------------------
+        const photoCollection = [
+            "Pics/2acac694b00bfbc9ad6a29fc2ce55839.jpg",
+            "Pics/2ce987a1f02f740d83a4feb4bd501dfa.jpg",
+            "Pics/8f039178a5e84c74e21b7e45a3c26305.jpg",
+            "Pics/36f799cfb1880bc44dcc4310ac01c7f3.jpg",
+            "Pics/44fb54c75fb802b8cdc21953755439fe.jpg",
+            "Pics/0869fe15c0048f654ad56b880b0a08cf.jpg",
+            "Pics/63750ad02e17cd592cf350f66e84566f.jpg",
+            "Pics/099740f3904679e03e4cbb0da4f183a2.jpg",
+            "Pics/a0d469a6d931bebdf12d76c40281b422.jpg",
+            "Pics/ab7cd46719fd2f2de6b28e763e53e8c0.jpg",
+            "Pics/c3491f511349da49b6de65d9af257a62.jpg",
+            "Pics/cf33c5dfa6e6946b282f6cb03bda8aa9.jpg",
+            "Pics/d0dfc04f0a43c0202d6e048b046f325a.jpg",
+            "Pics/d414a36a4c13503db46398a0926bf3bd.jpg",
+            "Pics/fb47be1d1584c26dd56c8df478532b29.jpg",
+            "Pics/Snapchat-1277078213.jpg",
+            "Pics/Snapchat-2085037044.jpg",
+            // Add your own image URLs here
+        ];
+
+        // ----------------------------------------------------
+        //  INTERACTIVE STORY FLOW
+        // ----------------------------------------------------
+        const storyFlow = [
+            { step: 0, type: 'bot_text', content: "Heyyy Machuuuuussss🫶", delay: 1000 },
+            { step: 1, type: 'wait_for_user' },
+            { step: 2, type: 'bot_text', content: "Ini ovu dina gothundaaaa🤭", delay: 1500 },
+            { step: 3, type: 'wait_for_user' },
+            { step: 4, type: 'bot_text', content: "Wait for it... 🙈", delay: 1000 },
+            { step: 5, type: 'bot_photo_batch', content: photoCollection, delay: 800 },
+            
+            { 
+                step: 6, 
+                type: 'bot_text', 
+                content: "pics toodhu anda mule msg malpu.",
+                delay: 1500 
+            },
+            { step: 7, type: 'wait_for_user' }, 
+            
+            { step: 8, type: 'bot_text', content: "Finally the wait is over... 🤭🤭", delay: 1000 },
+            { step: 9, type: 'bot_text', content: "Happiest Bday Machuuuuuuuu🫂🫂🫶❤️❤️🥳🎂✨", delay: 1000, effect: 'confetti' },
+            { step: 10, type: 'bot_text', content: `Machuu Machuu Machuuuuu 🥹🥹
+            Erda sumaaar vishaya paniyere undu ye. So let me start.😮‍💨
+            4 Varsha aand athe machuu Nama Frnds aadh, Just one Random day somehow onji gurtha aand
+            Still apaga la aath patherija nama 
+            Anchene dina poyilakane 
+            Frnds ayaa nama, thn as a year passed, close frnds ayaa, from close frnds rdh Best frnds ayaa and from there now we are best frnds for lifeeee 🥹🫂🫂🫶🏻 aadh ulla still nana dumbula unduve frndship maintain malpuva andh i hope. From strangers to BFF undu journey was a roller coaster ride of emotions sumar ups toota sumar downs tootha 
+            Ottige telthdha, ottige bulthdha, pet malthdha 😂🤭, erg sumar torture la malthde onji beri budandina betala laka😅. Sumar struggles la tootha ottige nama. Onji time d dada mathaa athnd namma ee journey d. 
+            And My dear Tripura Sundari 🤭
+            Just accept yerla- er shoku ullar pannaga 😂🫶🏻. Becoz they are not lying okkkkk Ur Daaaamnnnnnnn Prettyyyyyy🥹❤️ Girl. Erna kann aa yavu to go mesmerized. Such lovely eyes u have. Still kopa 😤 with god why he made ur eyes weak. And face da panpune borchi,🤌🏻🤌🏻 its cutie cutie 🤭🤭.
+            Er yethla panle pottu mone, galeej thojuve, latpot thojuve, karab thojuve, dabba etc and all. I don't give a damn thing, er sundari panda sundari ok.
+            Aa face d cutness da jotheg 
+            Body d hotness la undu 🤭🤭
+            Sexyyy Girl Yajju. 😂😂🫶🏻🤭 amazing body structure 👌🏻👌🏻. Sapura uppana is secondary 😂. Figure top uppuna is primary 😂😂, wht and all im telling ok. Leave that 😂😂. Nama dumbu poyi. Ancha we have come this Far nanala poyere undu sumar. I hope er yenna ottige always uppuvar andh, U have always been my number 1 supporter, A Guru, sometimes Amma 😂🤭, A student of mine 😂, A listener, A monkey 🤭🤭, My chaddi buddy (onje chaddi share malthija 🤣 still avu paaniyere tooyere yedde undu word so uppad 😂), My dear Machu, and now my Little Princess like sister 🥹🫶🏻. 
+            Overall u are my Heart 🥹🫂🫂. Dil ka thukda panper but e full heart aa🤌🏻.
+            Er yenk dever korthina vara ithilaka ave.
+            Im proud to be ur maccha🥹.i have changed a lot in a good way becoz of u.
+            Yenan pookie boy malthini yer pandh kenda the only answer is my macchu 🤭😂😂.
+            Hopefully undu year erg mast yedde upad.  Ayinaath gammath malpule, happy aadh uppule, erna matha wishes fullfill avad. Dever erg bka erna family g good health and wealth dottige bless malpad andh ill pray🧿🧿. "कृष्णं सदा सहायते" 🦚🦚 Always believe in god. Never loose hope in him and yourself, he'll always be with u.
+            And machu, whenever u feel low or sad or wanna talk something, don't Think ur alone, im there for u and always will. Just a call or txt away doesn't matter at which time, im always there for my cutie pie. I hope and believe yan erg avu comfort zone korte in which yethe personal things adhithndala oriye aana na ottige share malpunath without feeling awkward or, Without feeling the fear of being judged pandh. I will always be like ur personal human diary🫂🫂🫂.
+            U can share anything with me. yerdala paaniyere avadhina vishya u can tell to me and i promise u that it won't be shared with anyone. I will always support you in every possible way. Always help u in everything. If ur facing any problem in life don't forget ninna maccha ninna ottige ulle pandh, we Will overcome it together. 
+            Everyone has a spl person in their life, for me its u.
+            Once again Happiest Bday machuuuuu 🥹🥹🫂🫂❤️🫶🏻
+            Love u soooo soooo muchhhh 🫂🫂🤧🤧. I will always pray for u to become a great person in life🧿🧿, be generous and kind to everyone. U will always get it in return machhuu.
+            And your Machha signing off🙏🏻
+            Take care and bye bye 🥰`, delay: 3500 },
+            
+        ];
+
+        let currentStepIndex = 0;
+
+        // Elements
+        const messagesList = document.getElementById('messages-list');
+        const typingIndicator = document.getElementById('typing-indicator');
+        const chatContainer = document.getElementById('chat-container');
+        const statusText = document.getElementById('status-text');
+        const inputField = document.getElementById('chat-input');
+        const sendBtn = document.getElementById('send-btn');
+
+        // Initial Setup
+        window.onload = () => {
+            processStep();
+        };
+
+        // Input Monitor
+        inputField.addEventListener('input', (e) => {
+            const val = e.target.value;
+            updateSendIcon(val.trim().length > 0);
+        });
+
+        inputField.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleUserSend();
+        });
+        
+        function updateSendIcon(hasText) {
+            if (hasText) {
+                // Paper Plane Icon (Send)
+                sendBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-send w-5 h-5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>';
+            } else {
+                // Mic Icon
+                sendBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-mic w-5 h-5"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>';
+            }
+        }
+
+        // ----------------------------------------------------
+        //  CORE LOGIC
+        // ----------------------------------------------------
+
+        async function processStep() {
+            if (currentStepIndex >= storyFlow.length) return;
+
+            const currentAction = storyFlow[currentStepIndex];
+
+            // --- BOT TEXT ---
+            if (currentAction.type === 'bot_text') {
+                setInputState(false);
+                await new Promise(r => setTimeout(r, currentAction.delay));
+                
+                showTyping(true);
+                await new Promise(r => setTimeout(r, 1200)); 
+                showTyping(false);
+
+                addMessage(currentAction.content, 'in', 'text');
+                
+                if (currentAction.effect === 'confetti') {
+                    triggerConfetti();
+                }
+                
+                currentStepIndex++;
+                processStep();
+
+            // --- WAITING FOR USER ---
+            } else if (currentAction.type === 'wait_for_user') {
+                setInputState(true);
+            
+            // --- BOT PHOTOS ---
+            } else if (currentAction.type === 'bot_photo_batch') {
+                setInputState(false);
+                await new Promise(r => setTimeout(r, currentAction.delay));
+                
+                showTyping(true);
+                await new Promise(r => setTimeout(r, 1000));
+                showTyping(false);
+
+                const photos = currentAction.content;
+                for (let i = 0; i < photos.length; i++) {
+                    addMessage(photos[i], 'in', 'image');
+                    await new Promise(r => setTimeout(r, 400));
+                }
+
+                currentStepIndex++;
+                processStep();
+                
+            // --- AUTO FILL INPUT ---
+            } else if (currentAction.type === 'auto_fill') {
+                await new Promise(r => setTimeout(r, 500)); 
+                
+                inputField.disabled = false;
+                inputField.value = currentAction.content;
+                inputField.focus();
+                
+                updateSendIcon(true);
+                
+                currentStepIndex++;
+                processStep();
+
+            // --- BOT BUTTON ---
+            } else if (currentAction.type === 'bot_button') {
+                setInputState(false);
+                await new Promise(r => setTimeout(r, currentAction.delay));
+                addMessage(currentAction.content, 'in', 'button');
+                currentStepIndex++;
+                processStep();
+            }
+        }
+
+        function handleUserSend() {
+            const text = inputField.value.trim();
+            if (!text) return; 
+
+            addMessage(text, 'out', 'text');
+            
+            inputField.value = '';
+            updateSendIcon(false); // Reset to Mic
+
+            const currentAction = storyFlow[currentStepIndex];
+            if (currentAction && currentAction.type === 'wait_for_user') {
+                currentStepIndex++;
+                processStep();
+            }
+        }
+
+        function setInputState(enabled) {
+            if (enabled) {
+                inputField.disabled = false;
+                // REMOVED inputField.focus() here to prevent keyboard popup
+                statusText.innerText = "online";
+            } else {
+                inputField.disabled = true;
+                inputField.blur();
+            }
+        }
+
+        function showTyping(show) {
+            if (show) {
+                typingIndicator.classList.remove('hidden');
+                typingIndicator.classList.add('flex');
+                statusText.innerText = "typing...";
+                scrollToBottom();
+            } else {
+                typingIndicator.classList.add('hidden');
+                typingIndicator.classList.remove('flex');
+                statusText.innerText = "online";
+            }
+        }
+
+        function addMessage(content, direction, type) { 
+            const div = document.createElement('div');
+            // Changed to 12-hour format explicitly
+            const time = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
+            
+            // Default classes
+            div.className = `msg-bubble msg-${direction} message-enter`;
+
+            if (type === 'image') {
+                div.classList.add('msg-bubble-image');
+                div.innerHTML = `
+                    <div class="relative rounded-lg overflow-hidden">
+                        <img src="${content}" class="w-full h-auto object-cover max-h-[300px]" alt="Photo">
+                        <div class="msg-time-image">
+                            ${time}
+                        </div>
+                    </div>
+                `;
+            } else if (type === 'button') {
+                // Reset styling for button to be standalone
+                div.className = "w-full flex justify-center mt-4 message-enter"; 
+                div.innerHTML = `
+                    <a href="${content.link}" class="bg-[#25D366] hover:bg-[#128C7E] text-white font-bold py-3 px-6 rounded-full shadow-lg transition transform hover:scale-105 flex items-center gap-2 no-underline text-center">
+                        <span>${content.text}</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                    </a>
+                `;
+            } else {
+                // Text Message
+                const tick = direction === 'out' 
+                    ? `<span class="ml-1 inline-block"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="tick-icon"><polyline points="20 6 9 17 4 12"/></svg></span>` 
+                    : '';
+
+                div.innerHTML = `
+                    <span>${content}</span>
+                    <span class="msg-time">
+                        ${time} ${tick}
+                    </span>
+                `;
+            }
+            
+            messagesList.appendChild(div);
+            scrollToBottom();
+        }
+
+        function scrollToBottom() {
+            setTimeout(() => {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }, 50);
+        }
+
+        function triggerConfetti() {
+            const duration = 3000;
+            const end = Date.now() + duration;
+
+            (function frame() {
+                confetti({
+                    particleCount: 5,
+                    angle: 60,
+                    spread: 55,
+                    origin: { x: 0 },
+                    colors: ['#128C7E', '#25D366', '#ffffff']
+                });
+                confetti({
+                    particleCount: 5,
+                    angle: 120,
+                    spread: 55,
+                    origin: { x: 1 },
+                    colors: ['#128C7E', '#25D366', '#ffffff']
+                });
+
+                if (Date.now() < end) {
+                    requestAnimationFrame(frame);
+                }
+            }());
+        }
+    </script>
+</body>
+</html>
